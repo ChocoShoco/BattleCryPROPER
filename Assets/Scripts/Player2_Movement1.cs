@@ -2,12 +2,14 @@ using UnityEditor.Animations;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class Player2_Movement : MonoBehaviour
+public class Player2_Movement : MonoBehaviour, IPlayerVoiceControlled
 {
     [SerializeField] private NavMeshAgent agent;
-    public GameObject enemy;
     [SerializeField] private Animator animator;
-    public bool can_input;
+
+    public Transform opponent;
+    public bool can_input = true;
+    public bool CanInput => can_input;
 
     public enum PlayerState
     {
@@ -17,81 +19,103 @@ public class Player2_Movement : MonoBehaviour
         Kicking
     }
 
-    public PlayerState state;
+    public PlayerState state = PlayerState.Idle;
+
+    private void OnEnable()
+    {
+        VoiceCommandSystem.OnCommandRecognized += OnVoiceCommand;
+    }
+
+    private void OnDisable()
+    {
+        VoiceCommandSystem.OnCommandRecognized -= OnVoiceCommand;
+    }
+
     private void Start()
     {
+        if (!agent)
+            agent = GetComponent<NavMeshAgent>();
+
         can_input = true;
         state = PlayerState.Idle;
-        //agent = GetComponent<NavMeshAgent>();
     }
 
     private void Update()
     {
-        switch (state)
+        if (opponent)
+            agent.SetDestination(opponent.position);
+
+        HandleManualInput();
+    }
+
+    private void HandleManualInput()
+    {
+        if (!can_input) return;
+
+        if (Input.GetKeyDown(KeyCode.RightShift)) ExecuteCommand("dodge");
+        if (Input.GetKeyDown(KeyCode.U)) ExecuteCommand("attack");
+        if (Input.GetKeyDown(KeyCode.I)) ExecuteCommand("block");
+        if (Input.GetKeyDown(KeyCode.O)) ExecuteCommand("kick");
+        if (Input.GetKeyDown(KeyCode.P)) ExecuteCommand("cancel");
+    }
+
+    private void OnVoiceCommand(string command)
+    {
+        // Filter so only Player 2 commands get through
+        if (command.Contains("player two") || command.Contains("p2"))
         {
-            case PlayerState.Idle:
-                if (agent.velocity == Vector3.zero)
-                {
-                    //return;
-                }
-                else
-                {
-                    //return;
-                }
+            command = command.Replace("player two", "").Replace("p2", "").Trim();
+            ExecuteCommand(command);
+        }
+    }
+
+    public void ExecuteCommand(string command)
+    {
+        if (!can_input) return;
+        command = command.ToLower();
+
+        ResetAllTriggers();
+
+        switch (command)
+        {
+            case "attack":
+                state = PlayerState.Attacking;
+                animator.SetTrigger("Attack");
+                can_input = false;
                 break;
-            case PlayerState.Attacking:
+
+            case "block":
+                state = PlayerState.Blocking;
+                animator.SetTrigger("Block");
+                can_input = false;
                 break;
-            case PlayerState.Blocking:
+
+            case "kick":
+                state = PlayerState.Kicking;
+                animator.SetTrigger("Kick");
+                can_input = false;
                 break;
-            case PlayerState.Kicking:
+
+            case "dodge":
+                animator.SetTrigger("Dodge");
+                can_input = false;
                 break;
-        }
-        agent.SetDestination(enemy.transform.position);
 
-        if (Input.GetKeyDown(KeyCode.RightShift) && can_input)
-        {
-            ResetAllTriggers();
-            can_input = false;
-            animator.SetTrigger("Dodge");
-        }
+            case "cancel":
+                animator.SetTrigger("Cancel");
+                can_input = true;
+                break;
 
-        if (Input.GetKeyDown(KeyCode.U) && can_input)
-        {
-            ResetAllTriggers();
-            state = PlayerState.Attacking;
-            can_input = false;
-            animator.SetTrigger("Attack");
-        }
-
-        if (Input.GetKeyDown(KeyCode.I) && can_input)
-        {
-            ResetAllTriggers();
-            state = PlayerState.Blocking;
-            can_input = false;
-            animator.SetTrigger("Block");
-        }
-
-        if (Input.GetKeyDown(KeyCode.O) && can_input)
-        {
-            ResetAllTriggers();
-            state = PlayerState.Kicking;
-            can_input = false;
-            animator.SetTrigger("Kick");
-        }
-
-        if (Input.GetKeyDown(KeyCode.P) && can_input == false)
-        {
-            can_input = true;
-            //ResetAllTriggers();
-            //can_input = true;
-            animator.SetTrigger("Cancel");
+            default:
+                Debug.Log($"[Player 2] Unrecognized command: {command}");
+                break;
         }
     }
 
     public void input_enable()
     {
         can_input = true;
-        Debug.Log("enabled input");
+        Debug.Log($"{name} input re-enabled");
     }
 
     private void ResetAllTriggers()
@@ -99,9 +123,7 @@ public class Player2_Movement : MonoBehaviour
         foreach (var param in animator.parameters)
         {
             if (param.type == AnimatorControllerParameterType.Trigger)
-            {
                 animator.ResetTrigger(param.name);
-            }
         }
     }
 }
