@@ -65,7 +65,17 @@ public class Player_Movement : MonoBehaviour, IPlayerVoiceControlled
     public void ExecuteCommand(string command)
     {
         if (!can_input) return;
-        command = command.ToLower();
+
+        // Clean up command
+        command = command.ToLower().Trim();
+        command = command.Replace("!", "").Replace(".", "").Replace(",", "").Replace("?", "");
+
+        // Normalize variations (handles duplicates, repeats, or phrases)
+        if (command.Contains("kick")) command = "kick";
+        else if (command.Contains("punch") || command.Contains("attack")) command = "attack";
+        else if (command.Contains("block")) command = "block";
+        else if (command.Contains("dodge")) command = "dodge";
+        else if (command.Contains("cancel")) command = "cancel";
 
         ResetAllTriggers();
 
@@ -100,11 +110,12 @@ public class Player_Movement : MonoBehaviour, IPlayerVoiceControlled
                 break;
 
             default:
-                // For debugging unknown phrases
                 Debug.Log($"Unrecognized command: {command}");
                 break;
         }
     }
+
+
 
     public void input_enable()
     {

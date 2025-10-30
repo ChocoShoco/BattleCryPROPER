@@ -257,8 +257,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VoiceCommandSystem
   recorder: {fileID: 263309807}
   whisper: {fileID: 263309805}
-  triggerKey: 32
-  autoStopTime: 2
+  listenInterval: 3
 --- !u!114 &263309807
 MonoBehaviour:
   m_ObjectHideFlags: 0

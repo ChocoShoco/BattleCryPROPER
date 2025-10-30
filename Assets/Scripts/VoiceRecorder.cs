@@ -10,12 +10,14 @@ public class VoiceRecorder : MonoBehaviour
     public int sampleRate = 16000;
     public int recordTime = 5; // seconds
 
-    public void StartRecording()
+    public void StartRecording(int durationOverride = -1)
     {
-        recording = Microphone.Start(null, false, recordTime, sampleRate);
+        int duration = durationOverride > 0 ? durationOverride : recordTime;
+        recording = Microphone.Start(null, false, duration, sampleRate);
         filePath = Path.Combine(Application.persistentDataPath, "recorded.wav");
         Debug.Log("Recording started...");
     }
+
 
     public void StopRecording()
     {
