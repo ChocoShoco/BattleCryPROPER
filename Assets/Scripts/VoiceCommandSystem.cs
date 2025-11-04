@@ -5,9 +5,13 @@ public class VoiceCommandSystem : MonoBehaviour
 {
     public static event System.Action<string> OnCommandRecognized;
 
+    [Header("Components")]
     [SerializeField] private VoiceRecorder recorder;
     [SerializeField] private WhisperOffline whisper;
-    [SerializeField] private float listenInterval = 3f; // every few seconds, process audio
+
+    [Header("Settings")]
+    [Tooltip("Length of each recording cycle in seconds.")]
+    [SerializeField] private float listenInterval = 1f;
 
     private bool isListening = false;
 
@@ -21,7 +25,14 @@ public class VoiceCommandSystem : MonoBehaviour
         if (isListening) return;
         isListening = true;
         StartCoroutine(ContinuousListeningLoop());
-        Debug.Log("[VoiceCommandSystem] Continuous listening started.");
+        Debug.Log($"[{name}] Continuous listening started.");
+    }
+
+    public void StopListening()
+    {
+        isListening = false;
+        Microphone.End(null);
+        Debug.Log($"[{name}] Listening stopped.");
     }
 
     private IEnumerator ContinuousListeningLoop()
@@ -33,12 +44,12 @@ public class VoiceCommandSystem : MonoBehaviour
 
             recorder.StopRecording();
             string path = recorder.GetLastSavedFilePath();
-            Debug.Log($"[VoiceCommandSystem] Processing segment: {path}");
 
+            Debug.Log($"[{name}] Processing segment: {path}");
             yield return StartCoroutine(whisper.TranscribeRoutine(path, OnWhisperComplete));
 
-            // small delay before next capture
-            yield return new WaitForSeconds(0.25f);
+            // Minimal pause to keep the loop stable
+            yield return new WaitForSeconds(0.1f);
         }
     }
 
@@ -46,20 +57,12 @@ public class VoiceCommandSystem : MonoBehaviour
     {
         if (string.IsNullOrWhiteSpace(result))
         {
-            Debug.LogWarning("Whisper returned no text.");
+            Debug.LogWarning($"[{name}] Whisper returned no text.");
             return;
         }
 
         string cleaned = result.Trim().ToLower();
-        Debug.Log($"Whisper recognized: \"{cleaned}\"");
-
+        Debug.Log($"[{name}] Whisper recognized: \"{cleaned}\"");
         OnCommandRecognized?.Invoke(cleaned);
-    }
-
-    public void StopListening()
-    {
-        isListening = false;
-        Microphone.End(null);
-        Debug.Log("[VoiceCommandSystem] Listening stopped.");
     }
 }
